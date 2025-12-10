@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { startWorker } from "../worker";
+import { seedDatabase } from "../seed";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,6 +62,16 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+
+  // Seed database with initial services (idempotent - uses upsert)
+  console.log("[Startup] Seeding database with initial services...");
+  seedDatabase().catch(err => {
+    console.error("[Startup] Failed to seed database:", err);
+  });
+
+  // Start the health check worker (runs every 60 seconds)
+  console.log("[Startup] Starting health check worker...");
+  startWorker(60000);
 }
 
 startServer().catch(console.error);
